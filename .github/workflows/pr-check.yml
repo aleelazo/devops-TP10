@@ -1,0 +1,74 @@
+---
+name: PR Check - Validación de Calidad y Helm Chart
+
+on:
+  pull_request:
+    branches: ["main", "develop"]
+
+jobs:
+  lint-and-test:
+    name: Validar código Python
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      - name: Configurar Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Instalar herramientas de calidad
+        run: pip install flake8 pytest pytest-cov PyYAML
+
+      - name: Analizar código Python
+        run: flake8 demo/backend/ --max-line-length=120
+
+      - name: Comprobar disponibilidad de pruebas
+        run: |
+          if [ -d "demo/backend/tests" ]; then
+            pytest demo/backend/tests/
+          else
+            echo "No hay pruebas automatizadas en demo/backend/tests."
+            echo "Se omite pytest porque el repositorio TP10 no contiene esa carpeta."
+          fi
+
+  helm-validation:
+    name: Validar y Renderizar Helm Chart
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      - name: Instalar Helm CLI
+        uses: azure/setup-helm@v4
+        with:
+          version: 'v3.13.0'
+
+      - name: Renderizar plantillas Go a YAML
+        run: |
+          helm template mi-app ./devops-portfolio \
+            -f devops-portfolio/values-prod.yaml \
+            > manifests-rendered-prod.yaml
+
+      - name: Validar sintaxis YAML
+        run: |
+          pip install PyYAML
+          python3 -c "
+          import yaml
+          with open('manifests-rendered-prod.yaml') as f:
+              docs = list(yaml.safe_load_all(f))
+              print(f'[OK] Se procesaron correctamente {len(docs)} objetos de Kubernetes.')
+          "
+
+      - name: Validar estructura del Chart
+        run: helm lint devops-portfolio/
+
+      - name: Publicar manifiestos renderizados
+        uses: actions/upload-artifact@v4
+        with:
+          name: manifiestos-k8s-renderizados
+          path: manifests-rendered-prod.yaml
+          retention-days: 7

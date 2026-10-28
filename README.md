@@ -1,97 +1,44 @@
-# TP 10 — Kubernetes avanzado: Helm + Ingress
+# DevOps Portfolio — TP10C: Entrega Continua con Helm Multi-Entorno
 
-## Estructura del Chart
+![Helm CD Pipeline](https://github.com/aleelazo/devops-TP10/actions/workflows/helm-cd.yml/badge.svg)
 
-```text
-devops-portfolio/
-├── Chart.yaml
-├── values.yaml
-├── values-dev.yaml
-├── values-prod.yaml
-└── templates/
-    ├── _helpers.tpl
-    ├── namespace.yaml
-    ├── secret.yaml
-    ├── configmap.yaml
-    ├── postgres.yaml
-    ├── backend.yaml
-    ├── frontend.yaml
-    ├── ingress.yaml
-    └── NOTES.txt
-```
+Pipeline de Entrega Continua gobernado por **Helm**, aplicando el patrón **Render First, Validate Second** (TP10B), compuertas de aprobación manual y reversión automática ante fallos de despliegue.
 
-## Comandos principales
+## Releases y Entornos
 
-Validar el chart:
+| Release | Namespace | Archivo Values | Réplicas BE | Ingress Host | Aprobación |
+|---|---|---|---|---|---|
+| `notes-staging` | `staging` | `values-staging.yaml` | 1 | `staging.devops-portfolio.local` | Automática |
+| `notes-prod` | `production` | `values-prod.yaml` | 3 (HPA) | `devops-portfolio.com` | Manual Gate |
+
+## Operaciones de Despliegue y Rollback
+
+### Validar renderizado previo localmente (Técnica TP10B)
 
 ```bash
-helm lint devops-portfolio/
+bash scripts/render-validate.sh
 ```
 
-Ver los manifests generados:
+### Actualizar release manualmente
 
 ```bash
-helm template mi-app devops-portfolio/ \
-  --values devops-portfolio/values-dev.yaml
+helm upgrade --install notes-prod ./devops-portfolio -f devops-portfolio/values-prod.yaml -n production
 ```
 
-Instalar:
+### Historial de versiones del release
 
 ```bash
-helm install mi-app devops-portfolio/ \
-  --values devops-portfolio/values-dev.yaml \
-  --namespace devops-portfolio
+helm history notes-prod -n production
 ```
 
-Actualizar:
+### Rollback a la versión anterior inmediata
 
 ```bash
-helm upgrade mi-app devops-portfolio/ \
-  --values devops-portfolio/values-dev.yaml \
-  --namespace devops-portfolio
+helm rollback notes-prod 0 -n production
 ```
 
-Rollback:
+### Auditoría automatizada
 
 ```bash
-helm rollback mi-app 2 -n devops-portfolio
-```
-
-Desinstalar:
-
-```bash
-helm uninstall mi-app -n devops-portfolio
-```
-
-## Ingress: routing por paths
-
-| Path | Servicio destino |
-|---|---|
-| `/` | frontend-service:80 |
-| `/api` | backend-service:5000 |
-| `/health` | backend-service:5000 |
-
-## Multi-entorno
-
-Desarrollo:
-
-```bash
-helm upgrade --install mi-app devops-portfolio/ \
-  --values devops-portfolio/values-dev.yaml \
-  --namespace devops-portfolio
-```
-
-Producción:
-
-```bash
-helm upgrade --install mi-app-prod devops-portfolio/ \
-  --values devops-portfolio/values-prod.yaml \
-  --namespace devops-portfolio-prod \
-  --create-namespace
-```
-
-## Verificación
-
-```bash
-bash scripts/verificar.sh
+bash scripts/verificar-helm-entornos.sh
 ```

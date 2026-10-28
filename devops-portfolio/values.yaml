@@ -31,9 +31,9 @@ postgres:
 # ── Backend Flask ─────────────────────────────────────────
 backend:
   image:
-    repository: TU_USUARIO/devops-portfolio
+    repository: devops-portfolio-backend
     tag: "latest"
-    pullPolicy: Always
+    pullPolicy: IfNotPresent
   replicas: 2
   port: 5000
   env:
@@ -55,9 +55,9 @@ backend:
 # ── Frontend Nginx ────────────────────────────────────────
 frontend:
   image:
-    repository: TU_USUARIO/devops-frontend
+    repository: devops-portfolio-frontend
     tag: "latest"
-    pullPolicy: Always
+    pullPolicy: IfNotPresent
   replicas: 2
   port: 80
   resources:
